@@ -560,7 +560,7 @@
     > 这些值还可以是通配符或者大括号扩展；
 
     ```shell
-    for arg in elem1 elem2 elem3 ... elemN;do
+    for arg in elem1 elem2 elem3 ... elemN; do
     	# 执行命令语句
     done
     ```
@@ -577,18 +577,258 @@
     done
     ```
 
+    **举例1**
+
+    ```shell
+    # 将所有.bash 文件移动到scritp文件夹，并将
+    DIR=/home/zp
+    for FILE in ${DIR}/*.sh;do
+    	mv "$FILE" “${DIR}/scripts”
+    done
+    ```
+
     
 
   * while循环
 
+    > 检测一个条件，只要条件为真，就执行命令。
+    >
+    > 被检测的条件跟if..then中使用的基元并无二意。
+
+    ```shell
+    while [[ 条件 ]]; do
+    	### 语句
+    done
+    ```
+
+    举例1
+
+    ```shell
+    ### 0到9之间每个数的平方
+    x=0
+    while [[ ${x} -lt 10 ]]; do
+    	echo $((x * x))
+    	x=$((x+1))
+    done
+    ```
+
+    
+
   * until循环
+
+    > 先检测一个测试条件。
+    >
+    > 条件为假，就循环，跟while相反
+
+    ```shell
+    x=0
+    untile [[ ${x} -ge 5 ]]; do
+    	echo ${x}
+    	x=`expr ${x} + 1`
+    done
+    ```
+
+    
 
   * select循环
 
+    > 帮助我们组织一个用户菜单。语法几乎跟for循环一致。
+
+    ```shell
+    select answer in elem1 elem2 elem3 ... elemN; do
+    	### 语句
+    done
+    ```
+
+    **举例1**
+
+    ```shell
+    #! /usr/bin/env bash
+    
+    #-------------------------------------------------------------------------
+    # 用法：select会打印elem1 .. elemN以及它们的序列号到屏幕上，之后提示用户输入。
+    # 输入一个数字。
+    # 通常看到的是$?（PS3变量）。
+    # 用户选择结果会被保存到answer中。如果answer是一个在1 .. N之间的数字，那么语句会被执行，
+    # 紧接着会进行下一次迭代--如果不想这样，我们可以使用break语句。
+    #--------------------------------------------------------------------------
+    
+    PS3="Choose the package manager: "  # 先询问用户想使用什么包管理器
+    select answer in bower npm gem pip; do
+    	echo -n "Enter the package name: " && read PACKAGE  # 询问想安装什么包
+    	case ${PACKAGE} in
+    		bower) bower install ${PACKAGE};;
+    		npm) npm install ${PACKAGE};;
+    		gem) gem install ${PACKAGE};;
+    		pip) pip install ${PACKAGE};;
+    	esac
+    	break #避免无限循环
+    done
+    ```
+
+
+
+* break: 提前结束当前循环
+
+  ```shell
+  # 查找10以内第一个能整除2和3的正整数
+  i=1
+  while [[ ${i} -lt 10 ]];do
+  	if [[ $((i % 3)) -eq 0 ]] && [[ ${i % 2} -eq 0 ]]; then
+  		echo ${i}
+  		break
+  	fi
+  	i=`expr ${i} + 1`
+  done
+  ```
+
+  
+
+  
+
+* continue：跳过某次迭代
+
+  ```shell
+  # 打印10以内的奇数
+  for (( i=0;i<10;i++ )); do
+  	if [[ $((i % 2)) -eq 0 ]];then
+  		continue
+  	fi
+  	echo "${i}"
+  done
+  ```
+
+  
+
 ### 8.函数
 
-* 位置参数
+* 函数定义
+
+  > 1. 定义函数，function关键字可有可无。
+  > 2. 函数返回值（0-255）。如果不加，那么最后一条命令的结果，作为函数的返回值。
+  > 3. 调用该函数后，可以用$?来获取返回值。
+  > 4. 函数在使用前必须定义。这意味着必须将函数放在脚本的开始部分，直到shell解释器首次发现它时，才可以调用。
+  > 5. 调用函数，仅使用其函数名即可。
+
+  ```shell
+  [ function ] function_name [()] {
+  	action;
+  	[return int;]
+  }
+  ```
+
+  **举例1**
+
+  ```shell
+  #!/usr/bin/env bash
+  
+  calc(){
+      PS3="Choose the oper: "
+      select oper in + - \* /; do # 生成操作符菜单
+          echo -n "enter first num: " && read x
+          echo -n "enter second num: " && read y
+          exec
+          case ${oper} in
+              "+") return $((${x} + ${y}));;
+              "-") return $((${x} - ${y}));;
+              "*") return $((${x} * ${y}));;
+              "/") return $((${x} / ${y}));;
+              *) echo "${oper} is not support!"; return 0;;
+          esac
+          break
+      done
+  }
+  calc
+  echo "the result is: $?" # $? 获取calc函数的返回值
+  ```
+
+  
+
+* 位置参数:调用一个函数并传给它参数时，创建的变量
+
+  位置函数变量表：
+
+  | 变量           | 描述                           |
+  | -------------- | ------------------------------ |
+  | `$0`           | 脚本名称                       |
+  | `$1 … $9`      | 第 1 个到第 9 个参数列表       |
+  | `${10} … ${N}` | 第 10 个到 N 个参数列表        |
+  | `$*` or `$@`   | 除了`$0`外的所有位置参数       |
+  | `$#`           | 不包括`$0`在内的位置参数的个数 |
+  | `$FUNCNAME`    | 函数名称（仅在函数内部有值）   |
+
+  ```shell
+  #!/usr/bin/env bash
+  
+  x=0
+  if [[ -n $1 ]];then
+      echo "第一个参数为：$1"
+      x=$1
+  else
+      echo "第一个参数为空"
+  fi
+  
+  y=0
+  if [[ -n $2 ]];then
+      echo "第二个参数为： $2"
+      y=$2
+  else
+      echo "第二个参数为空"
+  fi
+  
+  paramsFunction(){
+      echo "函数第一个入参： $1"
+      echo "函数第一个入参： $2"
+  }
+  
+  paramsFunction ${x} ${y}
+  ```
+
+  
+
 * 函数处理参数
+
+  | 参数处理 | 说明                                             |
+  | -------- | ------------------------------------------------ |
+  | `$#`     | 返回参数个数                                     |
+  | `$*`     | 返回所有参数                                     |
+  | `$$`     | 脚本运行的当前进程 ID 号                         |
+  | `$!`     | 后台运行的最后一个进程的 ID 号                   |
+  | `$@`     | 返回所有参数                                     |
+  | `$-`     | 返回 Shell 使用的当前选项，与 set 命令功能相同。 |
+  | `$?`     | 函数返回值                                       |
+
+  举例
+
+  ```shell
+  #!/usr/bin/env bash
+  
+  
+  runner(){
+      return 0
+  }
+  
+  name=cxh
+  paramsFunction(){
+      echo "函数第一个入参：$1"
+      echo "函数第二个入参：$2"
+      echo "传递到脚本的参数个数：$#"
+      echo "所有参数： "
+      printf "+ %s\n" "$*"
+      echo "脚本运行的当前进程ID号：$$"
+      echo "后台运行的最后一个进程的ID号：$!"
+      echo "所有参数："
+      printf "+ %s\n" "$@"
+      echo "Shell 使用的当前选项：$-"
+      runner
+      echo "runner 函数的返回值：$?"
+  }
+  
+  paramsFunction 1 "abc" "hello, \"cxh\""
+  
+  ```
+
+  
 
 ### 9.Shell扩展
 

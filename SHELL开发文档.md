@@ -832,15 +832,248 @@
 
 ### 9.Shell扩展
 
+> 1. 扩展发生在一行命令被分成一个个的记号（tokens）之后。
+> 2. 换言之，扩展是一种执行数学运算的机制，还可以用来保存命令的执行。
+
+* 大括号扩展
+
+  ```shell
+  echo beg{i,a,u}n # begin began begun
+  echo {0..5}      # 0 1 2 3 4 5
+  echo {00..8..2}  # 00 02 04 06 08
+  ```
+
+  
+
+* 算术扩展
+
+  ```shell
+  # $(())
+  result=$(( ((10 + 5*3) - 7) / 2 ))
+  echo $result ### 9
+  
+  # 在算术表达式中，使用变量无需带上$前缀; 其实(())构造了一种C语言环境。
+  x=4
+  y=7
+  echo $(( x + y ))      # 11
+  echo $(( ++x + y++ ))  # 12
+  echo $(( x + y ))      # 13
+  ```
+
+  
+
+* 单引号和双引号
+
+  > 1. 在双引号中，变量引用或者命令置换是会被展开的。
+  > 2. 在单引号中不会。
+
+  ```shell
+  echo "Your home: $HOME" # Your home: /Users/<username>
+  echo 'Your home: $HOME' # Your home: $HOME
+  ```
+
+  
+
+* 命令置换
+
+  > 对一个命令求值, 将其置换到另一个命令或者变量赋值表达式中。
+  >
+  > ``
+  >
+  > $()
+
+  ```shell
+  now=`date +%T`
+  ### or
+  now=$(date +%T)
+  
+  echo $now # 19:23:30
+  ```
+
+  > 当局部变量和环境变量包含空格时，它们在引号中的扩展要格外注意。
+
+  ```shell
+  # 调用第一个echo时，给了它5个单独的参数 -- INPUT被分成了单独的词，echo 在每个词之间打印了一个空格。第二种情况，调用echo时，只给了它一个参数（整个$INPUT的值，包括其中的空格）。 
+  INPUT="A string with   strange    whitespace."
+  echo $INPUT   ### A string with strange whitespace.
+  echo "$INPUT" ### A string with   strange    whitespace.
+  ```
+
+  更严肃的例子
+
+  ```shell
+  # 尽管这个问题可以通过把 FILE 重命名成Favorite-Things.txt来解决，但是，假如这个值来自某个环境变量，来自一个位置参数，或者来自其它命令（find, cat, 等等）呢。因此，如果输入 可能 包含空格，务必要用引号把表达式包起来
+  FILE="Favorite Things.txt"
+  cat $FILE   # 尝试输出两个文件： `Favorite`和`Things.txt`
+  cat "$FILE" # 输出一个文件： `Favorite Things.txt`
+  ```
+
+  
+
 ### 10.流和重定向
 
+> 使用流，我们能将一个程序的输出发送到另一个程序或文件，因此，我们能方便地记录日志或做一些其它我们想做的事。
+
 * 输入、输出流
+
+  > Bash接收输入，并以字符序列或字符流的形式产生输出。
+  >
+  > 这些流能被重定向到文件或另一个流中。
+
+  三个文件描述符：
+
+  | 代码 | 描述符   | 描述         |
+  | ---- | -------- | ------------ |
+  | `0`  | `stdin`  | 标准输入     |
+  | `1`  | `stdout` | 标准输出     |
+  | `2`  | `stderr` | 标准错误输出 |
+
 * 重定向
+
+  > 重定向可以让我们控制一个命令的输入来自哪里，输出结果到什么地方。
+
+  常用运算符：
+
+  | 操作符 | 描述                                                         |
+  | ------ | ------------------------------------------------------------ |
+  | `>`    | 重定向输出                                                   |
+  | `&>`   | 重定向输出和错误输出                                         |
+  | `&>>`  | 以附加的形式重定向输出和错误输出                             |
+  | `<`    | 重定向输入                                                   |
+  | `<<`   | [Here 文档](http://tldp.org/LDP/abs/html/here-docs.html) 语法 |
+  | `<<<`  | [Here 字符串](http://www.tldp.org/LDP/abs/html/x17837.html)  |
+
+  举例
+
+  ```shell
+  # ls的结果将会被写到list.txt中
+  ls -l > list.txt
+  
+  # 将输出附加到list.txt中
+  ls -a >> list.txt
+  
+  # 所有的错误信息会被写到errors.txt中
+  grep da * 2> errors.txt
+  # 从errors.txt中读取输入
+  less < errors.txt
+  ```
+
+  
+
 * **/dev/null**文件
+
+  > 如果希望执行某个命令，但又不希望在屏幕上显示输出结果，那么可以将输出重定向到 /dev/null：
+
+  ```shell
+  command > /dev/null
+  ```
+
+  > 如果希望屏蔽stdout和stderr，可以这样写：
+
+  ```shell
+  command > /dev/null 2>&1
+  # 简化
+  command &> /dev/null  # 推荐
+  command >& /dev/null
+  ```
+
+  
 
 ### 11.Debug
 
+>在shebang中使用选项
+
+```shell
+#!/bin/bash options
+```
+
+一些有用的选择：
+
+| Short | Name        | Description                                                |
+| ----- | ----------- | ---------------------------------------------------------- |
+| `-f`  | noglob      | 禁止文件名展开（globbing）                                 |
+| `-i`  | interactive | 让脚本以 *交互* 模式运行                                   |
+| `-n`  | noexec      | 读取命令，但不执行（语法检查）                             |
+| `-t`  | —           | 执行完第一条命令后退出                                     |
+| `-v`  | verbose     | 在执行每条命令前，向`stderr`输出该命令                     |
+| `-x`  | xtrace      | 在执行每条命令前，向`stderr`输出该命令以及该命令的扩展参数 |
+
+举例
+
+```shell
+#!/bin/bash -x
+
+for (( i=0;i<3;i++ ));do
+	echo $i
+done
+```
+
+结果：
+
+```shell
+$ ./my_script
++ (( i = 0 ))
++ (( i < 3 ))
++ echo 0
+0
++ (( i++  ))
++ (( i < 3 ))
++ echo 1
+1
++ (( i++  ))
++ (( i < 3 ))
++ echo 2
+2
++ (( i++  ))
++ (( i < 3 ))
+```
+
+> 有时候，我们需要debug脚本的一部分。
+>
+> 此时，使用set命令会很方便。
+
+```shell
+# 开启 debug
+set -x
+for (( i = 0; i < 3; i++ ));do
+	printf ${i}
+done
+# 关闭 debug
+set +x
+
+#  Output:
+#  + (( i = 0 ))
+#  + (( i < 3 ))
+#  + printf 0
+#  0+ (( i++  ))
+#  + (( i < 3 ))
+#  + printf 1
+#  1+ (( i++  ))
+#  + (( i < 3 ))
+#  + printf 2
+#  2+ (( i++  ))
+#  + (( i < 3 ))
+#  + set +x
+
+for i in {1..5}; do printf ${i};done
+printf "\n"
+# Output: 12345
+```
+
+
+
 ### 12.更多内容
+
+- [awesome-shell](https://github.com/alebcay/awesome-shell)，shell 资源列表
+- [awesome-bash](https://github.com/awesome-lists/awesome-bash)，bash 资源列表
+- [bash-handbook](https://github.com/denysdovhan/bash-handbook)
+- [bash-guide](https://github.com/vuuihc/bash-guide) ，bash 基本用法指南
+- [bash-it](https://github.com/Bash-it/bash-it)，为你日常使用，开发以及维护 shell 脚本和自定义命令提供了一个可靠的框架
+- [dotfiles.github.io](http://dotfiles.github.io/)，上面有 bash 和其它 shell 的各种 dotfiles 集合以及 shell 框架的链接
+- [Runoob Shell 教程](http://www.runoob.com/linux/linux-shell.html)
+- [shellcheck](https://github.com/koalaman/shellcheck) 一个静态 shell 脚本分析工具，本质上是 bash／sh／zsh 的 lint。
+
+最后，Stack Overflow 上 [bash 标签下](https://stackoverflow.com/questions/tagged/bash)有很多你可以学习的问题，当你遇到问题时，也是一个提问的好地方。
 
 ## Shell常用函数
 

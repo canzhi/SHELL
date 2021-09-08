@@ -984,7 +984,7 @@
 >在shebang中使用选项
 
 ```shell
-#!/bin/bash options
+#!/bin/bash [options]
 ```
 
 一些有用的选择：
@@ -998,7 +998,7 @@
 | `-v`  | verbose     | 在执行每条命令前，向`stderr`输出该命令                     |
 | `-x`  | xtrace      | 在执行每条命令前，向`stderr`输出该命令以及该命令的扩展参数 |
 
-举例
+举例:
 
 ```shell
 #!/bin/bash -x
@@ -1031,6 +1031,10 @@ $ ./my_script
 > 有时候，我们需要debug脚本的一部分。
 >
 > 此时，使用set命令会很方便。
+>
+> 开启：set -x
+>
+> 关闭：set +x
 
 ```shell
 # 开启 debug
